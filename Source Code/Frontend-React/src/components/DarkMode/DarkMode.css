@@ -1,0 +1,24 @@
+/* styles.css */
+
+body.light-mode {
+    background-color: white;
+    color: black;
+  }
+  
+  body.dark-mode {
+    background-color: black;
+    color: white;
+  }
+  
+  .ToogleButton button {
+    padding: 10px 20px;
+    font-size: 16px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+  }
+  
+  .ToogleButton button:hover {
+    background-color: gray;
+  }
+  

@@ -1,0 +1,205 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+ 
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 224 71.4% 4.1%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 224 71.4% 4.1%;
+ 
+    --popover: 0 0% 100%;
+    --popover-foreground: 224 71.4% 4.1%;
+ 
+    --primary: 220.9 39.3% 11%;
+    --primary-foreground: 210 20% 98%;
+ 
+    --secondary: 220 14.3% 95.9%;
+    --secondary-foreground: 220.9 39.3% 11%;
+ 
+    --muted: 220 14.3% 95.9%;
+    --muted-foreground: 220 8.9% 46.1%;
+ 
+    --accent: 220 14.3% 95.9%;
+    --accent-foreground: 220.9 39.3% 11%;
+ 
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 20% 98%;
+
+    --border: 220 13% 91%;
+    --input: 220 13% 91%;
+    --ring: 224 71.4% 4.1%;
+ 
+    --radius: 0.5rem;
+  }
+ 
+  .dark {
+    --background: 224 71.4% 4.1%;
+    --foreground: 210 20% 98%;
+ 
+    --card: 224 71.4% 4.1%;
+    --card-foreground: 210 20% 98%;
+ 
+    --popover: 224 71.4% 4.1%;
+    --popover-foreground: 210 20% 98%;
+ 
+    --primary: 210 20% 98%;
+    --primary-foreground: 220.9 39.3% 11%;
+ 
+    --secondary: 215 27.9% 16.9%;
+    --secondary-foreground: 210 20% 98%;
+ 
+    --muted: 215 27.9% 16.9%;
+    --muted-foreground: 217.9 10.6% 64.9%;
+ 
+    --accent: 215 27.9% 16.9%;
+    --accent-foreground: 210 20% 98%;
+ 
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 20% 98%;
+ 
+    --border: 215 27.9% 16.9%;
+    --input: 215 27.9% 16.9%;
+    --ring: 216 12.2% 83.9%;
+  }
+}
+ 
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply dark bg-background text-foreground overflow-x-hidden;
+  }
+}
+
+.DarkToggle {
+  background: #000;
+  color: #fff;
+}
+.DarkToggle button {
+  background: #fff;
+  color: #000;
+}
+.DarkToggle .bg-background {
+  background-color: #000;
+  color:#fff;
+}
+.DarkToggle .-z-50 {
+  z-index: 0;
+}
+.DarkToggle button:hover {
+  background-color: hsl(var(--accent));
+}
+.DarkToggle .bg-card {
+  background-color:#000000;
+  color:#ffffff;
+}
+body:has(.DarkToggle) .sidebar-style{
+  background-color: #000;
+  color:#fff;
+}
+body:has(.DarkToggle) .sidebar-style button{
+ background:transparent;
+ border:1px solid #ccc;
+}
+.sidebar-style {
+  overflow-y: scroll;
+}
+html:has(.DarkToggle) {
+  background: #000 !IMPORTANT;
+}
+.DarkToggle .text-muted-foreground {
+  color: #ffffff;
+}
+
+body:has(.DarkToggle) .sidebar-style button:hover {
+ 
+  color: #d7d7d7;
+}
+
+/* width */
+.sidebar-style::-webkit-scrollbar {
+  width: 5px;
+}
+
+/* Track */
+.sidebar-style::-webkit-scrollbar-track {
+  box-shadow: inset 0 0 5px grey; 
+  border-radius: 10px;
+}
+ 
+/* Handle */
+.sidebar-style::-webkit-scrollbar-thumb {
+  background: #f3ba2c; 
+  border-radius: 10px;
+}
+
+/* Handle on hover */
+.sidebar-style::-webkit-scrollbar-thumb:hover {
+  background: #cc9201; 
+}
+
+
+/* Styles for the scrollable container */
+.scroll-container {
+  overflow-y: auto;
+}
+
+/* Styles for the scrollable container */
+.scroll-container {
+  overflow-y: auto;
+}
+
+/* Custom scrollbar styles for Webkit browsers (Chrome, Safari) */
+.scroll-container::-webkit-scrollbar {
+  width: 8px; /* Width of the scrollbar */
+  background: transparent;
+}
+
+.scroll-container::-webkit-scrollbar-track {
+  background: transparent; /* Background of the scrollbar track */
+}
+
+.scroll-container::-webkit-scrollbar-thumb {
+  background:#1e293b; /* Color of the scrollbar thumb */
+  border-radius: 5rem;
+}
+
+.scroll-container::-webkit-scrollbar-thumb:hover {
+  background: #555; /* Color of the scrollbar thumb on hover */
+}
+
+/* Optional: Ensure custom scrollbars work in Internet Explorer and Edge */
+.scroll-container {
+  -ms-overflow-style: -ms-autohiding-scrollbar;
+}
+
+.lg-ttl {
+  color: #f5cb21cb;
+}
+
+.acc-hav {
+  color: #c0b9d4c4;
+}
+
+.new-acc {
+  color: #c9c8c3cc;
+}   
+
+.all-hve {
+  color: #c0b9d4c4;
+}
+.bg-muted {
+  background-color: hsl(var(--muted));
+  color: black;
+}
+.txt {
+  color: #ffffff;
+}
+/* .box {
+  background: #585c52;
+  text-align: center;
+} */
