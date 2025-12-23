@@ -1,0 +1,14 @@
+{
+    "configurations": [
+        {
+            "type": "java",
+            "name": "Spring Boot-TreadingPlateformApplication<treading-plateform>",
+            "request": "launch",
+            "cwd": "${workspaceFolder}",
+            "mainClass": "com.zosh.TreadingPlateformApplication",
+            "projectName": "treading-plateform",
+            "args": "",
+            "envFile": "${workspaceFolder}/.env"
+        }
+    ]
+}
