@@ -316,8 +316,8 @@ export function AssetTable({ coins, category }) {
   const navigate = useNavigate();
 
   return (
+    <ScrollArea className={category == "all" ? "h-[74vh]" : "h-[82vh]"}>
     <Table className="px-5  border-t relative">
-      <ScrollArea className={category == "all" ? "h-[74vh]" : "h-[82vh]"}>
         <TableHeader>
           <TableRow className="sticky top-0 left-0 right-0 bg-background">
             <TableHead className="py-4">Coin</TableHead>
@@ -361,8 +361,8 @@ export function AssetTable({ coins, category }) {
             </TableRow>
           ))}
         </TableBody>
-      </ScrollArea>
     </Table>
+          </ScrollArea>
   );
 }
 
