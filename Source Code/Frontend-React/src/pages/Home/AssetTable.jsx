@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/table";
 import { useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
+import PropTypes from 'prop-types';
 
 export const invoices = [
   {
@@ -329,13 +330,14 @@ export function AssetTable({ coins, category }) {
         </TableHeader>
 
         <TableBody className="">
-          {coins.map((item) => (
-            <TableRow
+         {Array.isArray(coins) &&
+            coins.map((item) => (
+          <TableRow
+            key={item.id}
             className="cursor-pointer"
-              onClick={() => navigate(`/market/${item.id}`)}
-              key={item.id}
+            onClick={() => navigate(`/market/${item.id}`)}
             >
-              <TableCell className="font-medium flex items-center gap-2">
+               <TableCell colSpan={6} className="text-center text-muted-foreground">
                 <Avatar className="-z-50">
                   <AvatarImage src={item.image} alt={item.symbol} />
                 </Avatar>
@@ -363,3 +365,8 @@ export function AssetTable({ coins, category }) {
     </Table>
   );
 }
+
+AssetTable.propTypes = {
+  coins: PropTypes.array.isRequired,
+  category: PropTypes.string,
+};

@@ -1,18 +1,21 @@
+import axios from "axios";
 
-import axios from 'axios';
-const DEPLOYED='https://e-commerce-server-production-0873.up.railway.app'
-const LOCALHOST='http://localhost:5454'
-
-export const API_BASE_URL = LOCALHOST
+// Read backend URL from environment variable
+export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
 const api = axios.create({
   baseURL: API_BASE_URL,
 });
 
-const token = localStorage.getItem('jwt');
+// Attach token dynamically (important for login/signup)
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem("jwt");
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
 
-api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-
-api.defaults.headers.post['Content-Type'] = 'application/json';
+api.defaults.headers.post["Content-Type"] = "application/json";
 
 export default api;

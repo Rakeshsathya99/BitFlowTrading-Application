@@ -1,5 +1,12 @@
 package com.zosh.service;
 
+import java.util.Optional;
+
+import org.json.JSONObject;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Service;
+
 import com.razorpay.Payment;
 import com.razorpay.PaymentLink;
 import com.razorpay.RazorpayClient;
@@ -14,14 +21,6 @@ import com.zosh.model.PaymentOrder;
 import com.zosh.model.User;
 import com.zosh.repository.PaymentOrderRepository;
 import com.zosh.response.PaymentResponse;
-import org.json.JSONObject;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
-import org.springframework.stereotype.Service;
-
-import java.util.Optional;
 
 @Service
 public class PaymentServiceImpl implements PaymentService{
@@ -37,6 +36,10 @@ public class PaymentServiceImpl implements PaymentService{
 
     @Autowired
     private PaymentOrderRepository paymentOrderRepository;
+
+    @Value("${frontend.url}")
+    private String frontendUrl;
+
 
 
     @Override
@@ -119,8 +122,13 @@ public class PaymentServiceImpl implements PaymentService{
             paymentLinkRequest.put("reminder_enable",true);
 
             // Set the callback URL and method
-            paymentLinkRequest.put("callback_url","http://localhost:5173/wallet/"+orderId);
-            paymentLinkRequest.put("callback_method","get");
+           // Set the callback URL and method
+            paymentLinkRequest.put(
+                 "callback_url",
+            frontendUrl + "/wallet/" + orderId
+            );
+            paymentLinkRequest.put("callback_method", "get");
+
 
             // Create the payment link using the paymentLink.create() method
             PaymentLink payment = razorpay.paymentLink.create(paymentLinkRequest);
@@ -145,26 +153,26 @@ public class PaymentServiceImpl implements PaymentService{
     public PaymentResponse createStripePaymentLink(User user, Long amount,Long orderId) throws StripeException {
         Stripe.apiKey = stripeSecretKey;
 
-        SessionCreateParams params = SessionCreateParams.builder()
-                .addPaymentMethodType(SessionCreateParams.PaymentMethodType.CARD)
-                .setMode(SessionCreateParams.Mode.PAYMENT)
-                .setSuccessUrl("http://localhost:5173/wallet?order_id="+orderId)
-                .setCancelUrl("http://localhost:5173/payment/cancel")
-                .addLineItem(SessionCreateParams.LineItem.builder()
-                        .setQuantity(1L)
-                        .setPriceData(SessionCreateParams.LineItem.PriceData.builder()
-                                .setCurrency("usd")
-                                .setUnitAmount(amount*100)
-                                .setProductData(SessionCreateParams
-                                        .LineItem
-                                        .PriceData
-                                        .ProductData
-                                        .builder()
-                                        .setName("Top up wallet")
-                                        .build()
-                                ).build()
+       SessionCreateParams params = SessionCreateParams.builder()
+        .addPaymentMethodType(SessionCreateParams.PaymentMethodType.CARD)
+        .setMode(SessionCreateParams.Mode.PAYMENT)
+        .setSuccessUrl(frontendUrl + "/wallet?order_id=" + orderId)
+        .setCancelUrl(frontendUrl + "/payment/cancel")
+        .addLineItem(
+            SessionCreateParams.LineItem.builder()
+                .setQuantity(1L)
+                .setPriceData(
+                    SessionCreateParams.LineItem.PriceData.builder()
+                        .setCurrency("usd")
+                        .setUnitAmount(amount * 100)
+                        .setProductData(
+                            SessionCreateParams.LineItem.PriceData.ProductData.builder()
+                                .setName("Top up wallet")
+                                .build()
                         ).build()
-                ).build();
+                ).build()
+        ).build();
+
 
         Session session = Session.create(params);
 

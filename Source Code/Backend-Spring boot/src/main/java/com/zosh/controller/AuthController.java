@@ -1,6 +1,5 @@
 package com.zosh.controller;
 
-
 import com.zosh.config.JwtProvider;
 import com.zosh.exception.UserException;
 import com.zosh.model.TwoFactorOTP;
@@ -10,9 +9,12 @@ import com.zosh.request.LoginRequest;
 import com.zosh.response.AuthResponse;
 import com.zosh.service.*;
 import com.zosh.utils.OtpUtils;
+
+import java.io.IOException;
+import java.util.Collections;
 import jakarta.mail.MessagingException;
-import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -25,191 +27,193 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.client.authentication.OAuth2AuthenticationToken;
 import org.springframework.web.bind.annotation.*;
 
-import java.io.IOException;
-
-
 @RestController
 @RequestMapping("/auth")
 public class AuthController {
 
-	@Autowired
-	private UserRepository userRepository;
-	@Autowired
-	private PasswordEncoder passwordEncoder;
+    @Autowired
+    private UserRepository userRepository;
 
-	@Autowired
-	private CustomeUserServiceImplementation customUserDetails;
-	
-	@Autowired
+    @Autowired
+    private PasswordEncoder passwordEncoder;
+
+    @Autowired
+    private CustomeUserServiceImplementation customUserDetails;
+
+    @Autowired
     private UserService userService;
 
-	@Autowired
-	private WatchlistService watchlistService;
+    @Autowired
+    private WatchlistService watchlistService;
 
-	@Autowired
-	private WalletService walletService;
+    @Autowired
+    private VerificationService verificationService;
 
-	@Autowired
-	private VerificationService verificationService;
+    @Autowired
+    private TwoFactorOtpService twoFactorOtpService;
 
-	@Autowired
-	private TwoFactorOtpService twoFactorOtpService;
+    @Autowired
+    private EmailService emailService;
 
-	@Autowired
-	private EmailService emailService;
+    // ===================== SIGN UP =====================
+    @PostMapping("/signup")
+    public ResponseEntity<AuthResponse> signup(@RequestBody User user) throws UserException {
 
-	
+        if (userRepository.findByEmail(user.getEmail()) != null) {
+            throw new UserException("Email already registered");
+        }
 
-	@PostMapping("/signup")
-	public ResponseEntity<AuthResponse> createUserHandler(
-			@RequestBody User user) throws UserException {
+        User newUser = new User();
+        newUser.setEmail(user.getEmail());
+        newUser.setFullName(user.getFullName());
+        newUser.setMobile(user.getMobile());
+        newUser.setPassword(passwordEncoder.encode(user.getPassword()));
 
-		String email = user.getEmail();
-		String password = user.getPassword();
-		String fullName = user.getFullName();
-		String mobile=user.getMobile();
+        User savedUser = userRepository.save(newUser);
 
+        watchlistService.createWatchList(savedUser);
 
-		User isEmailExist = userRepository.findByEmail(email);
+        Authentication authentication =
+                new UsernamePasswordAuthenticationToken(user.getEmail(), user.getPassword());
 
-		if (isEmailExist!=null) {
+        SecurityContextHolder.getContext().setAuthentication(authentication);
 
-			throw new UserException("Email Is Already Used With Another Account");
-		}
+        String token = JwtProvider.generateToken(authentication);
 
-		// Create new user
-		User createdUser = new User();
-		createdUser.setEmail(email);
-		createdUser.setFullName(fullName);
-		createdUser.setMobile(mobile);
-		createdUser.setPassword(passwordEncoder.encode(password));
+        AuthResponse response = new AuthResponse();
+        response.setJwt(token);
+        response.setMessage("Registration successful");
 
-		User savedUser = userRepository.save(createdUser);
+        return new ResponseEntity<>(response, HttpStatus.OK);
+    }
 
-		watchlistService.createWatchList(savedUser);
-//		walletService.createWallet(user);
+    // ===================== SIGN IN =====================
+    @PostMapping("/signin")
+    public ResponseEntity<AuthResponse> signin(
+            @RequestBody LoginRequest loginRequest
+    ) throws UserException, MessagingException {
 
+        Authentication authentication =
+                authenticate(loginRequest.getEmail(), loginRequest.getPassword());
 
-		Authentication authentication = new UsernamePasswordAuthenticationToken(email, password);
-		SecurityContextHolder.getContext().setAuthentication(authentication);
+        User user = userService.findUserByEmail(loginRequest.getEmail());
 
-		String token = JwtProvider.generateToken(authentication);
+        SecurityContextHolder.getContext().setAuthentication(authentication);
 
-		AuthResponse authResponse = new AuthResponse();
-		authResponse.setJwt(token);
-		authResponse.setMessage("Register Success");
+        String token = JwtProvider.generateToken(authentication);
 
-		return new ResponseEntity<AuthResponse>(authResponse, HttpStatus.OK);
+        // ===== TWO FACTOR AUTH =====
+        if (user.getTwoFactorAuth().isEnabled()) {
 
-	}
+            String otp = OtpUtils.generateOTP();
 
-	@PostMapping("/signin")
-	public ResponseEntity<AuthResponse> signing(@RequestBody LoginRequest loginRequest) throws UserException, MessagingException {
+            TwoFactorOTP oldOtp = twoFactorOtpService.findByUser(user.getId());
+            if (oldOtp != null) {
+                twoFactorOtpService.deleteTwoFactorOtp(oldOtp);
+            }
 
-		String username = loginRequest.getEmail();
-		String password = loginRequest.getPassword();
+            TwoFactorOTP twoFactorOTP =
+                    twoFactorOtpService.createTwoFactorOtp(user, otp, token);
 
-		System.out.println(username + " ----- " + password);
+            emailService.sendVerificationOtpEmail(user.getEmail(), otp);
 
-		Authentication authentication = authenticate(username, password);
+            AuthResponse response = new AuthResponse();
+            response.setMessage("Two-factor authentication required");
+            response.setTwoFactorAuthEnabled(true);
+            response.setSession(twoFactorOTP.getId());
 
-		User user=userService.findUserByEmail(username);
+            return new ResponseEntity<>(response, HttpStatus.OK);
+        }
 
-		SecurityContextHolder.getContext().setAuthentication(authentication);
+        AuthResponse response = new AuthResponse();
+        response.setMessage("Login successful");
+        response.setJwt(token);
 
-		String token = JwtProvider.generateToken(authentication);
+        return new ResponseEntity<>(response, HttpStatus.OK);
+    }
 
-		if(user.getTwoFactorAuth().isEnabled()){
-			AuthResponse authResponse = new AuthResponse();
-			authResponse.setMessage("Two factor authentication enabled");
-			authResponse.setTwoFactorAuthEnabled(true);
+	@GetMapping("/login/oauth2/code/google")
+public void handleGoogleCallback(
+        OAuth2AuthenticationToken authentication,
+        HttpServletResponse response
+) throws IOException {
 
-			String otp= OtpUtils.generateOTP();
+    String email = authentication.getPrincipal().getAttribute("email");
+    String fullName = authentication.getPrincipal().getAttribute("name");
 
-			TwoFactorOTP oldTwoFactorOTP=twoFactorOtpService.findByUser(user.getId());
-			if(oldTwoFactorOTP!=null){
-				twoFactorOtpService.deleteTwoFactorOtp(oldTwoFactorOTP);
-			}
+    User user = userRepository.findByEmail(email);
 
+    // Create user if not exists
+    if (user == null) {
+        user = new User();
+        user.setEmail(email);
+        user.setFullName(fullName);
+        user.setPassword(passwordEncoder.encode("GOOGLE_LOGIN"));
+        user = userRepository.save(user);
 
-			TwoFactorOTP twoFactorOTP=twoFactorOtpService.createTwoFactorOtp(user,otp,token);
+        watchlistService.createWatchList(user);
+    }
 
-			emailService.sendVerificationOtpEmail(user.getEmail(),otp);
+    UserDetails userDetails =
+        customUserDetails.loadUserByUsername(email);
 
-			authResponse.setSession(twoFactorOTP.getId());
-			return new ResponseEntity<>(authResponse, HttpStatus.OK);
-		}
+Authentication auth =
+        new UsernamePasswordAuthenticationToken(
+                userDetails,
+                null,
+                userDetails.getAuthorities()
+        );
 
-		AuthResponse authResponse = new AuthResponse();
+SecurityContextHolder.getContext().setAuthentication(auth);
+    String token = JwtProvider.generateToken(auth);
 
-		authResponse.setMessage("Login Success");
-		authResponse.setJwt(token);
+    // Redirect to frontend with JWT
+    String redirectUrl =
+            "https://bit-flow-trading-application.vercel.app/oauth-success?token=" + token;
 
-		return new ResponseEntity<>(authResponse, HttpStatus.OK);
-	}
-
-	private Authentication authenticate(String username, String password) {
-		UserDetails userDetails = customUserDetails.loadUserByUsername(username);
-
-		System.out.println("sign in userDetails - " + userDetails);
-
-		if (userDetails == null) {
-			System.out.println("sign in userDetails - null " + userDetails);
-			throw new BadCredentialsException("Invalid username or password");
-		}
-		if (!passwordEncoder.matches(password, userDetails.getPassword())) {
-			System.out.println("sign in userDetails - password not match " + userDetails);
-			throw new BadCredentialsException("Invalid username or password");
-		}
-		return new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
-	}
-
-
-	@GetMapping("/login/google")
-	public void redirectToGoogle(HttpServletRequest request, HttpServletResponse response)
-			throws IOException {
-		// Redirect to the Google OAuth2 authorization URI
-		response.sendRedirect("/login/oauth2/authorization/google");
-	}
-
-//	/login/oauth2/code/google
-@GetMapping("/login/oauth2/code/google")
-public User handleGoogleCallback(@RequestParam(required = false,name = "code") String code,
-										 @RequestParam(required = false,name = "state") String state,
-										 OAuth2AuthenticationToken authentication) {
-
-	// Extract user details from the authentication object or access token
-	String email = authentication.getPrincipal().getAttribute("email");
-	String fullName = authentication.getPrincipal().getAttribute("name");
-	// You can extract more details as needed
-
-	User user=new User();
-	user.setEmail(email);
-	user.setFullName(fullName);
-
-	return user;
+    response.sendRedirect(redirectUrl);
 }
 
-	@PostMapping("/two-factor/otp/{otp}")
-	public ResponseEntity<AuthResponse> verifySigningOtp(
-			@PathVariable String otp,
-			@RequestParam String id
-	) throws Exception {
+    // ===================== VERIFY 2FA OTP =====================
+    @PostMapping("/two-factor/otp/{otp}")
+    public ResponseEntity<AuthResponse> verifyOtp(
+            @PathVariable String otp,
+            @RequestParam String id
+    ) throws Exception {
 
+        TwoFactorOTP twoFactorOTP = twoFactorOtpService.findById(id);
 
-		TwoFactorOTP twoFactorOTP = twoFactorOtpService.findById(id);
+        if (twoFactorOtpService.verifyTwoFactorOtp(twoFactorOTP, otp)) {
 
-		if(twoFactorOtpService.verifyTwoFactorOtp(twoFactorOTP,otp)){
-			AuthResponse authResponse = new AuthResponse();
-			authResponse.setMessage("Two factor authentication verified");
-			authResponse.setTwoFactorAuthEnabled(true);
-			authResponse.setJwt(twoFactorOTP.getJwt());
-			return new ResponseEntity<>(authResponse, HttpStatus.OK);
-		}
-		throw new Exception("invalid otp");
-	}
+            AuthResponse response = new AuthResponse();
+            response.setMessage("Two-factor authentication verified");
+            response.setTwoFactorAuthEnabled(true);
+            response.setJwt(twoFactorOTP.getJwt());
 
+            return new ResponseEntity<>(response, HttpStatus.OK);
+        }
 
+        throw new Exception("Invalid OTP");
+    }
 
-	
+    // ===================== AUTH HELPER =====================
+    private Authentication authenticate(String email, String password) {
+
+        UserDetails userDetails =
+                customUserDetails.loadUserByUsername(email);
+
+        if (userDetails == null) {
+            throw new BadCredentialsException("Invalid email or password");
+        }
+
+        if (!passwordEncoder.matches(password, userDetails.getPassword())) {
+            throw new BadCredentialsException("Invalid email or password");
+        }
+
+        return new UsernamePasswordAuthenticationToken(
+                userDetails,
+                null,
+                userDetails.getAuthorities()
+        );
+    }
 }
